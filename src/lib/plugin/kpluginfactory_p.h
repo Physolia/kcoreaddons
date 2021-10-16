@@ -22,13 +22,11 @@ public:
     ~KPluginFactoryPrivate() = default;
 
 protected:
-    typedef QPair<const QMetaObject *, KPluginFactory::CreateInstanceFunction> Plugin;
     using PluginWithMetadata = QPair<const QMetaObject *, KPluginFactory::CreateInstanceWithMetaDataFunction>;
 
     KPluginFactoryPrivate() = default;
 
     KPluginMetaData metaData;
-    QMultiHash<QString, Plugin> createInstanceHash;
     QMultiHash<QString, PluginWithMetadata> createInstanceWithMetaDataHash;
 };
 

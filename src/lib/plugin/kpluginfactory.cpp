@@ -72,46 +72,6 @@ void KPluginFactory::setMetaData(const KPluginMetaData &metaData)
     d->metaData = metaData;
 }
 
-void KPluginFactory::registerPlugin(const QString &keyword, const QMetaObject *metaObject, CreateInstanceFunction instanceFunction)
-{
-    Q_D(KPluginFactory);
-
-    Q_ASSERT(metaObject);
-
-    // we allow different interfaces to be registered without keyword
-    if (!keyword.isEmpty()) {
-        if (d->createInstanceHash.contains(keyword)) {
-            qCWarning(KCOREADDONS_DEBUG) << "A plugin with the keyword" << keyword << "was already registered. A keyword must be unique!";
-        }
-        d->createInstanceHash.insert(keyword, KPluginFactoryPrivate::Plugin(metaObject, instanceFunction));
-    } else {
-        const QList<KPluginFactoryPrivate::Plugin> clashes(d->createInstanceHash.values(keyword));
-        const QMetaObject *superClass = metaObject->superClass();
-        if (superClass) {
-            for (const KPluginFactoryPrivate::Plugin &plugin : clashes) {
-                for (const QMetaObject *otherSuper = plugin.first->superClass(); otherSuper; otherSuper = otherSuper->superClass()) {
-                    if (superClass == otherSuper) {
-                        qCWarning(KCOREADDONS_DEBUG) << "Two plugins with the same interface(" << superClass->className()
-                                                     << ") were registered. Use keywords to identify the plugins.";
-                    }
-                }
-            }
-        }
-        for (const KPluginFactoryPrivate::Plugin &plugin : clashes) {
-            superClass = plugin.first->superClass();
-            if (superClass) {
-                for (const QMetaObject *otherSuper = metaObject->superClass(); otherSuper; otherSuper = otherSuper->superClass()) {
-                    if (superClass == otherSuper) {
-                        qCWarning(KCOREADDONS_DEBUG) << "Two plugins with the same interface(" << superClass->className()
-                                                     << ") were registered. Use keywords to identify the plugins.";
-                    }
-                }
-            }
-        }
-        d->createInstanceHash.insert(keyword, KPluginFactoryPrivate::Plugin(metaObject, instanceFunction));
-    }
-}
-
 void KPluginFactory::registerPlugin(const QString &keyword, const QMetaObject *metaObject, CreateInstanceWithMetaDataFunction instanceFunction)
 {
     Q_D(KPluginFactory);
@@ -200,34 +160,17 @@ QObject *KPluginFactory::create(const char *iface, QWidget *parentWidget, QObjec
     }
 #endif
 
-    const QList<KPluginFactoryPrivate::Plugin> candidates(d->createInstanceHash.values(keyword));
+    const QList<KPluginFactoryPrivate::PluginWithMetadata> candidates = (d->createInstanceWithMetaDataHash.values(keyword));
     // for !keyword.isEmpty() candidates.count() is 0 or 1
 
-    for (const KPluginFactoryPrivate::Plugin &plugin : candidates) {
+    for (const KPluginFactoryPrivate::PluginWithMetadata &plugin : candidates) {
         for (const QMetaObject *current = plugin.first; current; current = current->superClass()) {
             if (0 == qstrcmp(iface, current->className())) {
                 if (obj) {
                     qCWarning(KCOREADDONS_DEBUG) << "ambiguous interface requested from a DSO containing more than one plugin";
                 }
-                obj = plugin.second(parentWidget, parent, args);
+                obj = plugin.second(parentWidget, parent, d->metaData, args);
                 break;
-            }
-        }
-    }
-
-    if (!obj) {
-        const QList<KPluginFactoryPrivate::PluginWithMetadata> candidates = (d->createInstanceWithMetaDataHash.values(keyword));
-        // for !keyword.isEmpty() candidates.count() is 0 or 1
-
-        for (const KPluginFactoryPrivate::PluginWithMetadata &plugin : candidates) {
-            for (const QMetaObject *current = plugin.first; current; current = current->superClass()) {
-                if (0 == qstrcmp(iface, current->className())) {
-                    if (obj) {
-                        qCWarning(KCOREADDONS_DEBUG) << "ambiguous interface requested from a DSO containing more than one plugin";
-                    }
-                    obj = plugin.second(parentWidget, parent, d->metaData, args);
-                    break;
-                }
             }
         }
     }
