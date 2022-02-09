@@ -715,7 +715,7 @@ protected:
      * @deprecated Since 5.89, providing a custom CreateInstanceFunction is deprecated. Use registerPlugin<T>() instead
      */
     template<class T>
-    KCOREADDONS_DEPRECATED_VERSION(5, 89, "Providing a custom CreateInstanceFunction is deprecated. Use registerPlugin<T>() instead")
+    KCOREADDONS_DEPRECATED_VERSION_BELATED(5, 89, 5, 91, "Use registerPlugin(CreateInstanceWithMetaDataFunction) instead")
     void registerPlugin(const QString &keyword, CreateInstanceFunction instanceFunction)
     {
         registerPlugin(keyword, &T::staticMetaObject, instanceFunction);
@@ -813,6 +813,23 @@ protected:
     void registerPlugin()
     {
         CreateInstanceWithMetaDataFunction instanceFunction = InheritanceWithMetaDataChecker<T>().createInstanceFunction(static_cast<T *>(nullptr));
+        registerPlugin(QString(), &T::staticMetaObject, instanceFunction);
+    }
+
+    /**
+     * Registers a plugin with the factory. Call this function from the constructor of the
+     * KPluginFactory subclass to make the create function able to instantiate the plugin when asked
+     * for an interface the plugin implements.
+     *
+     * @tparam T the name of the plugin class
+     *
+     * @param instanceFunction A function pointer to a function that creates an instance of the
+     * plugin.
+     * @nce 5.91
+     */
+    template<class T>
+    void registerPlugin(CreateInstanceWithMetaDataFunction instanceFunction)
+    {
         registerPlugin(QString(), &T::staticMetaObject, instanceFunction);
     }
 
